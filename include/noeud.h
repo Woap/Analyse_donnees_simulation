@@ -1,3 +1,12 @@
+/*
+ * \file noeud.h
+ * \author IBIS Ibrahim
+ * \date 3 novembre 2017
+ *
+ * Declarations des fonctions et structures
+ *
+ */
+
 #ifndef NOEUD_H
 #define NOEUD_H
 
@@ -5,15 +14,12 @@
 
 typedef struct s_noeud
 {
-        char nom[1024];
-
+        char* nom;
         int nb_paquet_emis;
         int nb_paquet_recus;
         int nb_paquet_entres;
         int nb_paquet_sortis;
         int nb_paquet_perdus;
-
-        char nom_noeud_prec[1024];
 
         int nb_paquet_file;
         int taille_file;
@@ -31,9 +37,11 @@ typedef struct s_listenoeud
 
 
 Noeud newNoeud(void);
-Noeud noeudExistant(Noeud n,char nom[1024]);
-void insertionNoeud(ListeNoeud n,GlobalData data,Trace t);
+void freeNoeud(ListeNoeud ln);
+Noeud noeudExistant(Noeud n,char* nom);
+void insertionNoeud(ListeNoeud n,GlobalData data,Trace t,Param params);
 void affichage_donnees_noeud(Noeud n,GlobalData data);
+void affichage_donnees_noeud_client(Noeud n,GlobalData data,char nom[]);
 
 
 

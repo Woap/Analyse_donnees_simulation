@@ -1,18 +1,44 @@
+/*
+ * \file flux.c
+ * \author IBIS Ibrahim
+ * \date 3 novembre 2017
+ *
+ * Gestion des flux de la trace
+ *
+ */
+
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "../include/flux.h"
 
-
-
 Flux newFlux(void){
         return (Flux) NULL;
+}
+
+void freeFlux(ListeFlux lf){
+        Flux ptr = NULL;
+        ptr = lf->premier;
+        Flux curr= NULL;
+
+        while (ptr != NULL) {
+                curr = ptr;
+                ptr = ptr->next;
+                free(curr->s);
+                free(curr->d);
+                free (curr);
+        }
+
+        free(lf);
+        printf("Nettoyage flux OK \n");
 }
 
 Flux fluxExistant(Flux f,int fid)
 {
         // Je cherche si le flux est deja dans ma liste ?
-        Flux ptr = f;
+        Flux ptr = NULL;
+        ptr = f;
 
         while(ptr != NULL)
         {
@@ -27,7 +53,7 @@ Flux fluxExistant(Flux f,int fid)
 
 }
 
-void insertionFlux(ListeFlux f,GlobalData data,Trace t){
+void insertionFlux(ListeFlux f,GlobalData data,Trace t, Param params){
 
 
         Flux ptr=newFlux();
@@ -40,12 +66,16 @@ void insertionFlux(ListeFlux f,GlobalData data,Trace t){
                 if ( ptr != NULL)
                 {
                         ptr->fid=t->fid;
+                        ptr->s = (char*)malloc(strlen(t->s)+1);
                         strcpy(ptr->s,t->s);
+                        ptr->d = (char*)malloc(strlen(t->d)+1);
                         strcpy(ptr->d,t->d);
                         ptr->nb_paquet=0;
                         ptr->nb_paquet_perdus=0;
                         ptr->nb_paquet_emis=0;
                         ptr->nb_paquet_recus=0;
+                        ptr->delai_moyen=0;
+                        ptr->flux_etat=0; // 0 inactif > 0 nb paquet en transit
                         ptr->t_debut=t->t;
                         ptr->t_fin=t->t;
 
@@ -63,7 +93,7 @@ void insertionFlux(ListeFlux f,GlobalData data,Trace t){
 
         // Sinon ptr pointe vers le flux deja existant
         // traitement
-        if (ptr->fid == t->fid )      // INUTILE ?
+        if (ptr->fid == t->fid )
         {
 
                 ptr->t_fin=t->t;
@@ -72,18 +102,46 @@ void insertionFlux(ListeFlux f,GlobalData data,Trace t){
                 {
                 case 0:
                         ptr->nb_paquet_emis++;
+                        if ( ptr->flux_etat == 0)
+                        {
+                                data->nb_flux_actif++;
+                                if ( params->flux_actif )
+                                        fprintf(params->filefluxactif, "%f %d \n", t->t, data->nb_flux_actif );
+                        }
+                        ptr->flux_etat++;
                         break;
                 case 1:
-
+                        if ( ptr->flux_etat == 0)
+                        {
+                                data->nb_flux_actif++;
+                                if ( params->flux_actif )
+                                        fprintf(params->filefluxactif, "%f %d \n", t->t, data->nb_flux_actif );
+                        }
+                        ptr->flux_etat++;
                         break;
                 case 2:
 
                         break;
                 case 3:
-                        ptr->nb_paquet_recus++;
+
+                        ptr->flux_etat--;
+
+                        if ( ptr->flux_etat == 0)
+                        {
+                                data->nb_flux_actif--;
+                                if ( params->flux_actif )
+                                        fprintf(params->filefluxactif, "%f %d \n", t->t, data->nb_flux_actif );
+                        }
                         break;
                 case 4:
                         ptr->nb_paquet_perdus++;
+                        ptr->flux_etat--;
+                        if ( ptr->flux_etat == 0)
+                        {
+                                data->nb_flux_actif--;
+                                if ( params->flux_actif )
+                                        fprintf(params->filefluxactif, "%f %d \n", t->t, data->nb_flux_actif );
+                        }
                         break;
                 default:
 
@@ -99,18 +157,27 @@ void affichage_donnees_flux(Flux f,int nb)
 
         printf("-------------------------- \n");
         printf("Statistiques des flux \n");
-        printf("%-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Flux", "Source", "Dest", "Emis", "Recus","Perdus","Debut","Fin", "Duree de vie","Taux de perte");
-        while(ptr != NULL )
+        printf("%-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Flux", "Source", "Dest", "Emis", "Recus","Perdus", "Delai moyen","Debut","Fin", "Duree de vie","Taux de perte");
+        while(ptr != NULL && ptr->fid != nb )
         {
-                if ( ptr->fid == nb)
-                {
-                        float taux = (float)ptr->nb_paquet_perdus/((float)ptr->nb_paquet_emis)*100;
-                        printf(" %-10d %-10s %-10s %-10d %-10d %-10d %-10f %-10f %-10f %-10f%s \n",
-                               ptr->fid,ptr->s,ptr->d,ptr->nb_paquet_emis,ptr->nb_paquet_recus,ptr->nb_paquet_perdus,
-                               ptr->t_debut,ptr->t_fin,ptr->t_fin-ptr->t_debut,taux,"%");
-
-                }
                 ptr=ptr->next;
         }
+
+        if ( ptr != NULL)
+        {
+
+                ptr->delai_moyen = (float)ptr->delai_moyen/(float)ptr->nb_paquet_recus;
+                float taux = (float)ptr->nb_paquet_perdus/((float)ptr->nb_paquet_emis)*100;
+                printf(" %-10d %-10s %-10s %-10d %-10d %-10d %-10f %-10f %-10f %-15f %-10f%s \n",
+                       ptr->fid,ptr->s,ptr->d,ptr->nb_paquet_emis,ptr->nb_paquet_recus,ptr->nb_paquet_perdus,ptr->delai_moyen,
+                       ptr->t_debut,ptr->t_fin,ptr->t_fin-ptr->t_debut,taux,"%");
+
+
+        }
+        else
+        {
+                printf("Flux non trouvé \n");
+        }
         printf("-------------------------- \n\n");
+
 }

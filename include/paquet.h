@@ -1,12 +1,22 @@
+/*
+ * \file paquet.h
+ * \author IBIS Ibrahim
+ * \date 3 novembre 2017
+ *
+ * Declarations des fonctions et structures
+ *
+ */
+
 #ifndef PAQUET_H
 #define PAQUET_H
 
-#include "global.h"
+#include "noeud.h"
+#include "flux.h"
 
 
 typedef struct s_chemin
 {
-        char pos[1024];
+        char* pos;
         float date;
         int code;
 
@@ -17,7 +27,6 @@ typedef struct s_chemin
 typedef struct s_listechemin
 {
         Chemin premier;
-        Chemin dernier;
 
 } p_listechemin, *ListeChemin;
 
@@ -25,12 +34,11 @@ typedef struct s_paquet
 {
         int pid;
 
-        char s[1024]; // noeud source du paquet
-        char d[1024]; // noeud destination du paquet
-        int taille;
-        float t_depart;
-        float t_arrive;
+        char* s; // noeud source du paquet
+        char* d; // noeud destination du paquet
         ListeChemin lc;
+
+        char* prec;
 
         float temps_attente_files;
         float temps_transmission_liens;
@@ -46,8 +54,9 @@ typedef struct s_listepaquet
 } p_listePaquet, *ListePaquet;
 
 Paquet newPaquet(void);
+void freePaquet(ListePaquet lp);
 Paquet getPaquet(Paquet p,int pid);
-void insertionPaquet(ListePaquet p,GlobalData data,Trace t);
+void insertionPaquet(ListePaquet p,ListeNoeud n,ListeFlux f,GlobalData data,Trace t, Param params);
 void affichage_donnees_paquet(Paquet p,int nb);
 
 #endif

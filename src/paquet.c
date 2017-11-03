@@ -1,3 +1,12 @@
+/*
+ * \file paquets.c
+ * \author IBIS Ibrahim
+ * \date 3 novembre 2017
+ *
+ * Gestion des paquets de la trace
+ *
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,49 +18,86 @@ Paquet newPaquet(void){
         return (Paquet) NULL;
 }
 
+void freeChemin(ListeChemin lc){
+        Chemin ptr = lc->premier;
+        Chemin curr= NULL;
+
+        while (ptr != NULL) { // set curr to head, stop if list empty.
+                curr = ptr;
+                ptr = ptr->next; // advance head to next element.
+                free(curr->pos);
+                free (curr);    // delete saved pointer.
+        }
+
+        free(lc);
+
+}
+
+void freePaquet(ListePaquet lp){
+        Paquet ptr = lp->premier;
+        Paquet curr= NULL;
+
+        while (ptr != NULL) { // set curr to head, stop if list empty.
+                curr = ptr;
+                ptr = ptr->next; // advance head to next element.
+                freeChemin(curr->lc);
+                free(curr->s);
+                free(curr->d);
+                free(curr->prec);
+                free (curr);    // delete saved pointer.
+        }
+
+        free(lp);
+
+        printf("Nettoyage paquet OK \n");
+}
+
 
 
 Paquet getPaquet(Paquet p,int pid)
 {
-        // Je cherche si le paquet estdans ma liste ?
         Paquet ptr = p;
 
         while(ptr != NULL)
         {
                 if (ptr->pid == pid )
-                        return ptr;  // Existant je renvoie son addresse
+                        return ptr;  // Existant je renvoie son adresse
 
                 ptr=ptr->next;
         }
 
         return NULL; // Je renvoie null pour dire qu'il faut creer le paquet
-
 }
 
 
-void insertionPaquet(ListePaquet p,GlobalData data,Trace t){
+void insertionPaquet(ListePaquet p,ListeNoeud n,ListeFlux f,GlobalData data,Trace t, Param params){
 
         Paquet ptr=newPaquet();
-        if ( t->code == 0 )         // Je dois creer le flux
+        if ( t->code == 0 )         // Je dois creer le paquet
         {
                 ListeChemin lchemin = (ListeChemin ) malloc(sizeof(p_listechemin));
                 ptr = (Paquet) malloc(sizeof(p_paquet));
                 if ( ptr != NULL)
                 {
                         ptr->pid=t->pid;
+
+                        ptr->s = (char*)malloc(strlen(t->s)+1);
                         strcpy(ptr->s,t->s);
+                        ptr->d = (char*)malloc(strlen(t->d)+1);
                         strcpy(ptr->d,t->d);
+                        ptr->prec = (char*)malloc(strlen(t->pos)+1);
+                        strcpy(ptr->prec,t->pos);
+
                         ptr->temps_attente_files = 0;
                         ptr->temps_transmission_liens=0;
 
                         Chemin c = (Chemin) malloc(sizeof(p_Chemin));
+                        c->pos = (char*)malloc(strlen(t->pos)+1);
                         strcpy(c->pos,t->pos);
                         c->date=t->t;
                         c->code=t->code;
                         c->next = NULL;
                         lchemin->premier = c;
-                        lchemin->dernier = c;
-
                         ptr->lc = lchemin;
 
                         if ( p->premier == NULL )
@@ -67,11 +113,13 @@ void insertionPaquet(ListePaquet p,GlobalData data,Trace t){
         }
         else
         {
-                ptr = getPaquet(p->premier,t->pid); // Cherche le paquet = t->pid dans la liste
-                if ( ptr != NULL ) // Si je le trouve
+                ptr = getPaquet(p->premier,t->pid);   // Cherche le paquet
+                if ( ptr != NULL )
                 {
                         // J'ajoute un element dans la liste chemin
-                        Chemin c = (Chemin) malloc(sizeof(p_Chemin));
+
+                        Chemin c = (Chemin) malloc(sizeof(p_Chemin)); // ACTUEL
+                        c->pos = (char*)malloc(strlen(t->pos)+1);
                         strcpy(c->pos,t->pos);
                         c->date=t->t;
                         c->code=t->code;
@@ -81,11 +129,65 @@ void insertionPaquet(ListePaquet p,GlobalData data,Trace t){
                         while(ptr2->next != NULL) ptr2 = ptr2->next;  // Ajout en fin de liste
                         ptr2->next = c;
 
+                        if ( c->code == 2 && ptr2->code == 0 )
+                                ptr->temps_attente_files+=c->date-ptr2->date;
+
+                        if ( c->code == 3 && ptr2->code == 1 )
+                                ptr->temps_attente_files+=c->date-ptr2->date;
+
+                        if ( c->code == 1 && ptr2->code == 2 )
+                                ptr->temps_transmission_liens+=c->date-ptr2->date;
+
+
+                        if ( t->code == 1 )
+                        {
+
+                                char *tmp = (char*)realloc(ptr->prec,strlen(t->pos)+1);
+                                ptr->prec = tmp;
+                                strcpy(ptr->prec,t->pos);
+                        }
+
+                        if ( t->code == 2 )
+                        {
+                                Noeud nptr = newNoeud();
+                                nptr = noeudExistant(n->premier,ptr->prec);
+                                if ( nptr != NULL)
+                                {
+                                        nptr->nb_paquet_sortis++;
+                                        nptr->nb_paquet_file--;
+
+                                        if ( strcmp(params->noeud, nptr->nom) == 0 )
+                                        {
+                                                if ( (precision == 0) )
+                                                {
+                                                        fprintf(params->fileatt, "%f %d \n", t->t, nptr->nb_paquet_file);
+                                                }
+                                                precision=(precision+1)%25;
+                                        }
+                                }
+                        }
+
+                        if ( t->code == 3 )
+                        {
+
+                                Flux fptr=newFlux();
+                                data->temps_transmission_liens+= ptr->temps_transmission_liens;
+                                data->temps_attente_files+=ptr->temps_attente_files;
+
+                                fptr = fluxExistant(f->premier,t->fid);
+                                fptr->delai_moyen+=ptr->temps_transmission_liens+ptr->temps_attente_files;
+                                fptr->nb_paquet_recus++;
+                                if ( params->flux_delai == t->fid )
+                                {
+                                        if ( (precision1 == 0) )
+                                        {
+                                                fprintf(params->fileflux_delai, "%f %f \n", t->t, (float)fptr->delai_moyen/(float)fptr->nb_paquet_recus);
+                                        }
+                                        precision1=(precision1+1)%25;
+                                }
+                        }
                 }
-
         }
-
-
 }
 
 
@@ -116,14 +218,6 @@ void affichage_donnees_paquet(Paquet p,int nb)
 
                         if ( precedent != NULL && ptr2 != NULL)
                         {
-                                if ( ptr2->code == 2 && precedent->code == 0 )
-                                        ptr->temps_attente_files+=ptr2->date-precedent->date;
-
-                                if ( ptr2->code == 3 && precedent->code == 1 )
-                                        ptr->temps_attente_files+=ptr2->date-precedent->date;
-
-                                if ( ptr2->code == 1 && precedent->code == 2 )
-                                        ptr->temps_transmission_liens+=ptr2->date-precedent->date;
 
                                 if ( precedent->code == 0 )
                                         printf("( t = %f  ) \n ",precedent->date);
@@ -148,18 +242,16 @@ void affichage_donnees_paquet(Paquet p,int nb)
                                         break;
                                 }
                         }
-
-                        //printf("(%s , %f , %d) -> ",ptr2->pos,ptr2->date,ptr2->code);
-
                 }
-                //printf("%s \n", ptr->d);
-                printf("%-10s %-10s %-10s %-15s %-15s %-15s \n", "Source", "Dest", "Taille", "Attente file", "Temps transmission", "Délai acheminement");
-                printf(" %-10s %-10s %-10d %-15f %-15f %-15f \n",ptr->s,ptr->d,ptr->taille,ptr->temps_attente_files,ptr->temps_transmission_liens,ptr->temps_attente_files+ptr->temps_transmission_liens);
+
+                printf("%-10s %-10s %-15s %-15s %-20s \n", "Source", "Dest", "Attente file", "Temps transmission", "Délai acheminement");
+                printf(" %-10s %-10s %-15f %-20f %-20f \n",ptr->s,ptr->d,ptr->temps_attente_files,ptr->temps_transmission_liens,ptr->temps_attente_files+ptr->temps_transmission_liens);
                 printf("---- \n");
-                printf("-------------------------- \n\n");
+
         }
         else
         {
                 printf("Paquet non trouvé ! \n");
         }
+        printf("-------------------------- \n\n");
 }
