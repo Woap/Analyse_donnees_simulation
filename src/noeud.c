@@ -32,7 +32,7 @@ void freeNoeud(ListeNoeud ln){
         }
 
         free(ln);
-        printf("Nettoyage noeud OK \n");
+
 }
 
 
@@ -134,7 +134,7 @@ void insertionNoeud(ListeNoeud n,GlobalData data,Trace t,Param params){
                         {
                                 fprintf(params->fileatt, "%f %d \n", t->t, ptr->nb_paquet_file);
                         }
-                        precision=(precision+1)%25;
+                        precision=(precision+1)%250;
                 }
 
 
@@ -150,15 +150,17 @@ void affichage_donnees_noeud(Noeud n,GlobalData data)
         printf("-------------------------- \n");
         printf("Statistiques des noeuds \n");
 
-        printf("%-10s %-10s %-10s %-10s %-10s %-10s %-10s %-15s %-10s\n", "Noeud", "Emis", "Recus", "| Entres","Sortis","Perdus", "| Taille file","Taux de perte", "Proportion perte");
+        printf("%-10s %-10s %-10s %-10s %-10s %-15s %-15s %-15s %-15s\n", "Noeud", "Emis", "Recus","Perdus", "| Taille file","Taux de perte", "Proportion perte", "Proportion emis", "Proportion reçus");
         while(ptr != NULL)
         {
 
                 float proportion = (float)ptr->nb_paquet_perdus/(float)data->nb_paquet_perdus*100;
+                float proportion_emis = (float)ptr->nb_paquet_emis/(float)data->nb_paquet_emis*100;
+                float proportion_recus = (float)ptr->nb_paquet_recus/(float)data->nb_paquet_recus*100;
                 float taux = (float)ptr->nb_paquet_perdus/((float)ptr->nb_paquet_emis+(float)ptr->nb_paquet_entres)*100;
-                printf(" %-10s %-10d %-10d %-10d %-10d %-10d %-10d %-10f%-5s %-10f%s  \n",
-                       ptr->nom,ptr->nb_paquet_emis,ptr->nb_paquet_recus,ptr->nb_paquet_entres,
-                       ptr->nb_paquet_sortis,ptr->nb_paquet_perdus,ptr->taille_file,taux,"%",proportion,"%");
+                printf(" %-10s %-10d %-10d %-10d %-15d %f%-10s %f%-9s %f%-8s %-f%-7s  \n",
+                       ptr->nom,ptr->nb_paquet_emis,ptr->nb_paquet_recus,ptr->nb_paquet_perdus,ptr->taille_file,taux,"%",proportion,"%",proportion_emis,"%",proportion_recus,"%");
+
                 ptr=ptr->next;
         }
         printf("-------------------------- \n\n");
@@ -170,7 +172,7 @@ void affichage_donnees_noeud_client(Noeud n,GlobalData data,char nom[])
         printf("-------------------------- \n");
         printf("Statistiques du noeud \n");
 
-        printf("%-10s %-10s %-10s %-10s %-10s %-10s %-10s %-15s %-10s\n", "Noeud", "Emis", "Recus", "| Entres","Sortis","Perdus", "| Taille file","Taux de perte", "Proportion perte");
+        printf("%-10s %-10s %-10s %-10s %-10s %-15s %-15s %-15s %-15s\n", "Noeud", "Emis", "Recus","Perdus", "| Taille file","Taux de perte", "Proportion perte", "Proportion emis", "Proportion reçus");
         while(ptr != NULL && strcmp(ptr->nom,nom) != 0)
         {
                 ptr=ptr->next;
@@ -180,10 +182,11 @@ void affichage_donnees_noeud_client(Noeud n,GlobalData data,char nom[])
         {
 
                 float proportion = (float)ptr->nb_paquet_perdus/(float)data->nb_paquet_perdus*100;
+                float proportion_emis = (float)ptr->nb_paquet_emis/(float)data->nb_paquet_emis*100;
+                float proportion_recus = (float)ptr->nb_paquet_recus/(float)data->nb_paquet_recus*100;
                 float taux = (float)ptr->nb_paquet_perdus/((float)ptr->nb_paquet_emis+(float)ptr->nb_paquet_entres)*100;
-                printf(" %-10s %-10d %-10d %-10d %-10d %-10d %-10d %-10f%-5s %-10f%s  \n",
-                       ptr->nom,ptr->nb_paquet_emis,ptr->nb_paquet_recus,ptr->nb_paquet_entres,
-                       ptr->nb_paquet_sortis,ptr->nb_paquet_perdus,ptr->taille_file,taux,"%",proportion,"%");
+                printf(" %-10s %-10d %-10d %-10d %-10d %-10f%s %f%-9s %f%-8s %f%-7s  \n",
+                       ptr->nom,ptr->nb_paquet_emis,ptr->nb_paquet_recus,ptr->nb_paquet_perdus,ptr->taille_file,taux,"%",proportion,"%",proportion_emis,"%",proportion_recus,"%");
         }
         else
         {

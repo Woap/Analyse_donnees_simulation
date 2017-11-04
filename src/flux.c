@@ -31,7 +31,7 @@ void freeFlux(ListeFlux lf){
         }
 
         free(lf);
-        printf("Nettoyage flux OK \n");
+
 }
 
 Flux fluxExistant(Flux f,int fid)
@@ -106,31 +106,39 @@ void insertionFlux(ListeFlux f,GlobalData data,Trace t, Param params){
                         {
                                 data->nb_flux_actif++;
                                 if ( params->flux_actif )
-                                        fprintf(params->filefluxactif, "%f %d \n", t->t, data->nb_flux_actif );
+                                {
+                                        if ( (precision4 == 0) )
+                                        {
+                                                fprintf(params->filefluxactif, "%f %d \n", t->t, data->nb_flux_actif );
+                                        }
+                                        precision4=(precision4+1)%500;
+                                }
                         }
                         ptr->flux_etat++;
+
                         break;
                 case 1:
-                        if ( ptr->flux_etat == 0)
-                        {
-                                data->nb_flux_actif++;
-                                if ( params->flux_actif )
-                                        fprintf(params->filefluxactif, "%f %d \n", t->t, data->nb_flux_actif );
-                        }
-                        ptr->flux_etat++;
+
                         break;
                 case 2:
 
                         break;
                 case 3:
 
-                        ptr->flux_etat--;
 
+                        ptr->flux_etat--;
                         if ( ptr->flux_etat == 0)
                         {
                                 data->nb_flux_actif--;
+
                                 if ( params->flux_actif )
-                                        fprintf(params->filefluxactif, "%f %d \n", t->t, data->nb_flux_actif );
+                                {
+                                        if ( (precision4 == 0) )
+                                        {
+                                                fprintf(params->filefluxactif, "%f %d \n", t->t, data->nb_flux_actif );
+                                        }
+                                        precision4=(precision4+1)%500;
+                                }
                         }
                         break;
                 case 4:
@@ -140,7 +148,13 @@ void insertionFlux(ListeFlux f,GlobalData data,Trace t, Param params){
                         {
                                 data->nb_flux_actif--;
                                 if ( params->flux_actif )
-                                        fprintf(params->filefluxactif, "%f %d \n", t->t, data->nb_flux_actif );
+                                {
+                                        if ( (precision4 == 0) )
+                                        {
+                                                fprintf(params->filefluxactif, "%f %d \n", t->t, data->nb_flux_actif );
+                                        }
+                                        precision4=(precision4+1)%500;
+                                }
                         }
                         break;
                 default:
@@ -157,6 +171,7 @@ void affichage_donnees_flux(Flux f,int nb)
 
         printf("-------------------------- \n");
         printf("Statistiques des flux \n");
+
         printf("%-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Flux", "Source", "Dest", "Emis", "Recus","Perdus", "Delai moyen","Debut","Fin", "Duree de vie","Taux de perte");
         while(ptr != NULL && ptr->fid != nb )
         {

@@ -4,7 +4,7 @@ CFLAGS=-c -g -Wall
 all : bin/analyse
 
 bin/analyse: obj/analyse.o obj/flux.o obj/global.o obj/paquet.o obj/noeud.o
-	$(CC) -o analyse obj/analyse.o obj/flux.o obj/global.o obj/paquet.o obj/noeud.o
+	$(CC) -o analyse obj/analyse.o obj/flux.o obj/global.o obj/paquet.o obj/noeud.o -lm
 	mv analyse bin/
 
 obj/flux.o : src/flux.c include/flux.h

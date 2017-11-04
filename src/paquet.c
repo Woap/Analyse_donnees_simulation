@@ -48,8 +48,6 @@ void freePaquet(ListePaquet lp){
         }
 
         free(lp);
-
-        printf("Nettoyage paquet OK \n");
 }
 
 
@@ -132,6 +130,9 @@ void insertionPaquet(ListePaquet p,ListeNoeud n,ListeFlux f,GlobalData data,Trac
                         if ( c->code == 2 && ptr2->code == 0 )
                                 ptr->temps_attente_files+=c->date-ptr2->date;
 
+                        if ( c->code == 2 && ptr2->code == 1 )
+                                ptr->temps_attente_files+=c->date-ptr2->date;
+
                         if ( c->code == 3 && ptr2->code == 1 )
                                 ptr->temps_attente_files+=c->date-ptr2->date;
 
@@ -162,7 +163,7 @@ void insertionPaquet(ListePaquet p,ListeNoeud n,ListeFlux f,GlobalData data,Trac
                                                 {
                                                         fprintf(params->fileatt, "%f %d \n", t->t, nptr->nb_paquet_file);
                                                 }
-                                                precision=(precision+1)%25;
+                                                precision=(precision+1)%250;
                                         }
                                 }
                         }
@@ -173,6 +174,8 @@ void insertionPaquet(ListePaquet p,ListeNoeud n,ListeFlux f,GlobalData data,Trac
                                 Flux fptr=newFlux();
                                 data->temps_transmission_liens+= ptr->temps_transmission_liens;
                                 data->temps_attente_files+=ptr->temps_attente_files;
+
+                                data->delai_moyen+= ptr->temps_transmission_liens+ptr->temps_attente_files;
 
                                 fptr = fluxExistant(f->premier,t->fid);
                                 fptr->delai_moyen+=ptr->temps_transmission_liens+ptr->temps_attente_files;

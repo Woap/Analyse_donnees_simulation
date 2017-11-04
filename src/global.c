@@ -26,7 +26,10 @@ GlobalData newData(void){
         nouveau->nb_evenement=0;
         nouveau->temps_attente_files=0;
         nouveau->temps_transmission_liens=0;
+        nouveau->nb_paquet_perdus_temps=0;
+        nouveau->intervalle=1; // Intervalle des pertes
         nouveau->nb_flux_actif=0;
+        nouveau->ecart_type_dm=0;
 
         nouveau->nb_paquet_all_file=0;
         nouveau->nb_paquet_transit=0;
@@ -41,7 +44,7 @@ Trace newTrace(void){
 
 void freeGlobal(GlobalData g){
         free(g);
-        printf("Nettoyage data OK \n");
+
 }
 
 void insertionData(GlobalData data,Trace t,Param params){
@@ -67,14 +70,17 @@ void insertionData(GlobalData data,Trace t,Param params){
                 break;
         case 4:
                 data->nb_paquet_perdus++;
-                if ( params->perdus )
+                data->nb_paquet_perdus_temps++;
+                if ( t->t > data->intervalle )
                 {
-                        if ( (precision3 == 0) )
-                        {
-                                fprintf(params->fileperdus, "%f %d \n", t->t, data->nb_paquet_perdus );
-                        }
-                        precision3=(precision3+1)%25;
+                        if ( params->perdus )
+                                fprintf(params->fileperdus, "%f %d \n", t->t, data->nb_paquet_perdus_temps );
+                        data->nb_paquet_perdus_temps = 0;
+                        data->intervalle++;
+
                 }
+
+
                 data->nb_paquet_all_file--;
                 data->nb_paquet_transit--;
                 break;
@@ -89,7 +95,7 @@ void insertionData(GlobalData data,Trace t,Param params){
                 {
                         fprintf(params->fileatt, "%f %d \n", t->t, data->nb_paquet_all_file );
                 }
-                precision=(precision+1)%25;
+                precision=(precision+1)%250;
         }
 
         if ( params->transit && t->code != 1 && t->code !=2 )
@@ -98,7 +104,7 @@ void insertionData(GlobalData data,Trace t,Param params){
                 {
                         fprintf(params->filetransit, "%f %d \n", t->t, data->nb_paquet_transit );
                 }
-                precision2=(precision2+1)%25;
+                precision2=(precision2+1)%500;
         }
 
 }
@@ -106,7 +112,7 @@ void insertionData(GlobalData data,Trace t,Param params){
 void affichage_donnees_globales(GlobalData g)
 {
 
-        printf("Nombre evenement : %d \n",g->nb_evenement);
+        printf("Nombre evenements : %d \n",g->nb_evenement);
         printf("Nombre paquets traités : %d \n",g->nb_paquet_traites);
         printf("Nombre paquets émis : %d \n",g->nb_paquet_emis);
         printf("Nombre paquets reçus : %d \n",g->nb_paquet_recus);
@@ -123,7 +129,7 @@ void affichage_donnees_globales(GlobalData g)
         g->temps_transmission_liens = (float)g->temps_transmission_liens/(float)g->nb_paquet_recus;
         printf("Temps moyen transmission sur les liens : %f \n",g->temps_transmission_liens);
         printf("Temps moyen d'attente dans les files : %f \n",g->temps_attente_files );
-        g->delai_moyen =g->temps_attente_files + g->temps_transmission_liens;
+        g->delai_moyen =(float)g->delai_moyen/(float)g->nb_paquet_recus;
         printf("Délai moyen de bout en bout  : %f \n",g->delai_moyen );
 
 

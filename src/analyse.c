@@ -1,7 +1,7 @@
 /*
  * \file analyse.c
  * \author IBIS Ibrahim
- * \date 3 novembre 2017
+ * \date 11 octobre 2017
  *
  * Analyse de données de simulation
  *
@@ -12,13 +12,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
+
+
 
 #include "../include/paquet.h"
 #include "../include/flux.h"
 #include "../include/noeud.h"
 #include "../include/global.h"
 
-#define TAILLE 1024
+
 
 void freeAll(ListeFlux liste_flux,GlobalData statistiques, ListePaquet liste_paquet, ListeNoeud liste_noeud, Param params)
 {
@@ -34,7 +37,8 @@ int lecture_trace(FILE *fp,ListeNoeud lnoeud,ListeFlux lflux,ListePaquet lpaquet
 {
         int trash;
 
-        Trace t1 = (Trace) malloc(sizeof(p_trace));
+        Trace t1 = NULL;
+        t1 = (Trace) malloc(sizeof(p_trace));
         t1->code = -1;
 
         *nb = fscanf(fp, "%f %d",&t1->t,&t1->code);
@@ -46,10 +50,13 @@ int lecture_trace(FILE *fp,ListeNoeud lnoeud,ListeFlux lflux,ListePaquet lpaquet
 
         if ( *nb != EOF)
         {
+
                 insertionNoeud(lnoeud,data,t1,params);
                 insertionFlux(lflux,data,t1,params);
                 insertionData(data,t1,params);
                 insertionPaquet(lpaquet,lnoeud,lflux,data,t1,params);
+
+
         }
 
         free(t1);
@@ -61,7 +68,7 @@ int lecture_trace(FILE *fp,ListeNoeud lnoeud,ListeFlux lflux,ListePaquet lpaquet
 
 void usage(char *prog)
 {
-        fprintf(stderr, "usage: %s [ -p <noeud> | all ] [ -t ] [ -l ] [ -f ] [-d <fid> ] <trace> <matrice_adjacence> \n", prog);
+        fprintf(stderr, "usage: %s [ -p <noeud> | all ] [ -t ] [ -l ] [ -f ] [-d <fid> ] <trace> <matrice_adjacence> \n  [ -p <noeud> ] : variation au cours du temps du nombre de paquets dans les files du <noeud> \n  [ -l ] : nombre de paquets perdus au cours du temps \n  [ -t ] : nombre de paquet en transit au cours du temps \n  [ -f ] : nombre de flux actif au cours du temps \n  [ -d <fid> ] : délai de bout en bout pour l'ensemble des paquets du flux <fid> au cours du temps \n", prog);
 }
 
 
@@ -96,16 +103,20 @@ int main (int argc, char *argv[])
 
         GlobalData statistiques = newData();
 
-        ListeNoeud liste_noeud = (ListeNoeud) malloc(sizeof(p_listeNoeud));
+        ListeNoeud liste_noeud = NULL;
+        liste_noeud  = (ListeNoeud) malloc(sizeof(p_listeNoeud));
         liste_noeud->premier=NULL;
 
-        ListeFlux liste_flux = (ListeFlux) malloc(sizeof(p_listeFlux));
+        ListeFlux liste_flux = NULL;
+        liste_flux = (ListeFlux) malloc(sizeof(p_listeFlux));
         liste_flux->premier=NULL;
 
-        ListePaquet liste_paquet = (ListePaquet) malloc(sizeof(p_listePaquet));
+        ListePaquet liste_paquet = NULL;
+        liste_paquet = (ListePaquet) malloc(sizeof(p_listePaquet));
         liste_paquet->premier=NULL;
 
-        Param params = (Param) malloc(sizeof(p_param));
+        Param params = NULL;
+        params = (Param) malloc(sizeof(p_param));
         strcpy(params->noeud,"vide");
         params->flux_actif = 0;
         params->flux_delai =-1;
@@ -114,7 +125,7 @@ int main (int argc, char *argv[])
 
 
 
-        // Gestion arguments
+        // Gestion argument
 
         while ((c = getopt(argc, argv, "p:tlfd:")) != -1)
                 switch (c) {
@@ -137,6 +148,7 @@ int main (int argc, char *argv[])
                         decalage++;
                         params->flux_actif++;
                         params->filefluxactif = fopen("flux_actif.temp", "w");
+                        precision4=0;
                         break;
                 case 'd':
                         dflag++;
@@ -150,7 +162,6 @@ int main (int argc, char *argv[])
                         decalage++;
                         params->perdus++;
                         params->fileperdus = fopen("perdus.temp", "w");
-                        precision3=0;
                         break;
                 case '?':
                         errflg++;
@@ -166,24 +177,50 @@ int main (int argc, char *argv[])
 
         file = fopen(argv[1+decalage], "r");
 
-        if (ferror(file))
+        if (!file)
         {
                 fprintf(stderr, "Erreur ouverture du fichier %s \n",argv[1+decalage]);
                 freeAll(liste_flux,statistiques,liste_paquet,liste_noeud,params);
                 return -2;
         }
 
+        int count = 0;
+        char ca;
+
+        for (ca = getc(file); ca != EOF; ca = getc(file))
+                if (ca == '\n') // Increment count if this character is newline
+                        count = count + 1;
+
+        fclose(file);
+
+
+
+        file = fopen(argv[1+decalage], "r");
+
+        if (!file)
+        {
+                fprintf(stderr, "Erreur ouverture du fichier %s \n",argv[1+decalage]);
+                freeAll(liste_flux,statistiques,liste_paquet,liste_noeud,params);
+                return -2;
+        }
+
+
+        double progress=0;
         printf("Lecture trace \n");
         do {
                 lecture_trace(file,liste_noeud,liste_flux,liste_paquet,statistiques,&nb,params);
                 i++;
-
-                if ( i % 100000 == 0)
+                progress = (double)i/(double)count*100;
+                if ( ceil(progress) == progress )
                 {
-                        printf("%d \n",i);
+                        printf("\rProgression %f %s ",progress,"%");
+                        fflush(stdout);
                 }
 
+
         } while ( nb != EOF );
+
+        printf("\n");
 
         affichage_donnees_globales(statistiques);
         affichage_donnees_noeud(liste_noeud->premier,statistiques);
@@ -254,10 +291,7 @@ int main (int argc, char *argv[])
 
         // Gnuplot
 
-        if ( !pflag && !dflag && !tflag && !lflag && !fflag )
-        {
-                printf("Pas de graphique à générer ( voir options ) \n");
-        }
+
         if ( pflag )
         {
 

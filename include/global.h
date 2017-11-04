@@ -12,10 +12,13 @@
 
 #include <stdio.h>
 
+#define TAILLE 1024
+
 int precision;
 int precision1;
 int precision2;
 int precision3;
+int precision4;
 
 typedef struct s_globaldata
 {
@@ -31,9 +34,12 @@ typedef struct s_globaldata
         int nb_paquet_all_file; // Nombre de paquets dans l'ensemble des files
         int nb_paquet_transit; // Nombre de paquet en transit
         int nb_flux_actif; // Nombre de flux actif
+        int nb_paquet_perdus_temps;
+        int intervalle;
 
         float taux_perte;
         float delai_moyen;
+        float ecart_type_dm;
         float temps_attente_files;
         float temps_transmission_liens;
 
@@ -45,15 +51,15 @@ typedef struct s_trace {
         int code; // type de l'evenement
         int pid; // identifiant du paquet
         int fid; // identifidant du flux auquel appartient le paquet
-        char s[1024]; // noeud source du paquet
-        char d[1024]; // noeud destination du paquet
-        char pos[1024]; // position actuel sauf code = 2 prochain saut
+        char s[TAILLE]; // noeud source du paquet
+        char d[TAILLE]; // noeud destination du paquet
+        char pos[TAILLE]; // position actuel sauf code = 2 prochain saut
 
 } p_trace, *Trace;
 
 typedef struct s_param {
         // Options utilisateurs
-        char noeud[1024];
+        char noeud[TAILLE];
         int flux_delai;
         int transit;
         int flux_actif;
